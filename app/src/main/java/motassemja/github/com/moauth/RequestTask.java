@@ -53,9 +53,8 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
                     e.printStackTrace();
                 }
             }
+            mAuthCallback.onComplete(null, parseError(response.code()));
         }
-
-        mAuthCallback.onComplete(null, parseError(response.code()));
     }
 
     /**
