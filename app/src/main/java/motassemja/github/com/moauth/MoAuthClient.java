@@ -92,7 +92,9 @@ public class MoAuthClient {
                     .addHeader("Authorization", authHeader);
 
             RequestBody requestBody = body.build();
-            Request request = requestBuilder.url(oAuthConfig.getTokenUri().toURL()).post(requestBody).build();
+            Request request = requestBuilder.url(oAuthConfig.getTokenUri().toURL())
+                    .post(requestBody)
+                    .build();
 
             new RequestTask(request, new MoAuthCallback() {
                 @Override

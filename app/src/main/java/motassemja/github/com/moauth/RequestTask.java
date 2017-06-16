@@ -90,7 +90,7 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
     private MoAuthTokenResult parseResponseData(String data) throws JSONException {
         JSONObject jsonObject = new JSONObject(data);
         String accessToken = jsonObject.getString("access_token");
-        String refreshToken = jsonObject.getString("refresh_token");
+        String refreshToken = jsonObject.isNull("refresh_token") ? "" : jsonObject.getString("refresh_token");
         int expiresIn = jsonObject.getInt("expires_in");
 
         return new MoAuthTokenResult(accessToken, refreshToken, expiresIn);
