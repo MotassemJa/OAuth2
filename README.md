@@ -22,7 +22,7 @@ Then add the dependency to your module's build.gradle
 dependencies {
 
 	...
-	compile 'com.github.MotassemJa:MoAuth:0.0.4'
+	compile 'com.github.MotassemJa:MoAuth:0.0.6'
 	
 }
 ```
