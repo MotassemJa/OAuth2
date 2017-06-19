@@ -1,10 +1,12 @@
 package com.github.motassemja.moauth;
 
-import java.util.Calendar;
+import android.content.Context;
 
 import com.github.motassemja.moauth.credentials.MoAuthCredentials;
 import com.github.motassemja.moauth.exceptions.MoAuthExceptionManager;
 import com.github.motassemja.moauth.exceptions.MoAuthExceptionReason;
+
+import java.util.Calendar;
 
 /**
  * Created by moja on 12.06.2017.
@@ -14,6 +16,7 @@ public class Authenticator {
     public interface AuthenticationCallback {
         void onAuthenticationCompleted(boolean flag, Exception e);
     }
+
     public interface AccessTokenCallback {
         void onAccessTokenReceived(String s, Exception e);
     }
@@ -21,10 +24,14 @@ public class Authenticator {
     private MoAuthConfig mConfig;
     private MoAuthClient mClient;
     private static MoAuthTokenResult mTokenResult;
+    private Context mContext;
+    private String mTenantName;
 
-    public Authenticator(MoAuthConfig config) {
+    public Authenticator(MoAuthConfig config, Context context, String tenantName) {
         this.mConfig = config;
         mClient = new MoAuthClient(mConfig);
+        this.mContext = context;
+        this.mTenantName = tenantName;
     }
 
     public void authenticateWithCredentials(final AuthenticationCallback callback) {
@@ -47,9 +54,10 @@ public class Authenticator {
                 if (e != null) {
                     e.printStackTrace();
                     callback.onAuthenticationCompleted(false, e);
-                }
-                else {
+                } else {
                     mTokenResult = tokenResult;
+                    mClient.getCredentialsStore().storeCredentials(new MoAuthCredentials(tokenResult.getRefreshToken()
+                            , mTenantName), mContext);
                     callback.onAuthenticationCompleted(true, e);
                 }
             }
@@ -64,29 +72,31 @@ public class Authenticator {
 
     }
 
+    /**
+     * Get the access token by refresh token.
+     *
+     * @param callback
+     */
     public void retrieveAccessToken(final AccessTokenCallback callback) {
         MoAuthTokenResult validAccessToken = null;
         if (isAccessTokenValid()) {
             validAccessToken = mTokenResult;
             if (!validAccessToken.getAccessToken().isEmpty()) {
                 callback.onAccessTokenReceived(validAccessToken.getAccessToken(), null);
-            }
-            else {
-                MoAuthCredentials credentials = mClient.getCredentialsStore().loadCredentials();
+            } else {
+                MoAuthCredentials credentials = mClient.getCredentialsStore().loadCredentials(mTenantName, mContext);
                 if (credentials != null) {
                     mClient.requestOAuthTokenWithRefreshToken(credentials.getRefreshToken(), new MoAuthClient.MoAuthCallback() {
                         @Override
                         public void onComplete(MoAuthTokenResult tokenResult, Exception e) {
                             if (e != null) {
                                 callback.onAccessTokenReceived(null, e);
-                            }
-                            else {
+                            } else {
                                 callback.onAccessTokenReceived(tokenResult.getAccessToken(), null);
                             }
                         }
                     });
-                }
-                else {
+                } else {
                     callback.onAccessTokenReceived(null, new MoAuthExceptionManager("No credentials available",
                             MoAuthExceptionReason.REASON_UNAUTHORIZED_CLIENT));
                 }
