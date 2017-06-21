@@ -47,7 +47,7 @@ public class Authenticator {
         });
     }
 
-    public void authenticateWithUsername(String username, String password, final AuthenticationCallback callback) {
+    public void authenticateWithUsername(final String username, final String password, final AuthenticationCallback callback) {
         mClient.requestOAuthTokenWithUsername(username, password, new MoAuthClient.MoAuthCallback() {
             @Override
             public void onComplete(MoAuthTokenResult tokenResult, Exception e) {
@@ -56,8 +56,14 @@ public class Authenticator {
                     callback.onAuthenticationCompleted(false, e);
                 } else {
                     mTokenResult = tokenResult;
-                    mClient.getCredentialsStore().storeCredentials(new MoAuthCredentials(tokenResult.getRefreshToken()
-                            , mTenantName), mContext);
+                    MoAuthCredentials credentials = new MoAuthCredentials();
+                    credentials.setRefreshToken(tokenResult.getRefreshToken());
+                    credentials.setAlias(username);
+                    credentials.setPassword(password);
+                    credentials.setClientSecret(mConfig.getClientSecret());
+                    credentials.setClientID(mConfig.getClientID());
+
+                    mClient.getCredentialsStore().storeCredentials(credentials, mContext);
                     callback.onAuthenticationCompleted(true, e);
                 }
             }
