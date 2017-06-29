@@ -20,11 +20,16 @@ import okhttp3.Response;
 
 public class RequestTask extends AsyncTask<Void, Void, Response> {
     private Request mRequest;
-    private MoAuthClient.MoAuthCallback mAuthCallback;
+    private OnTaskFinishedListener mListener;
 
-    public RequestTask(Request request, MoAuthClient.MoAuthCallback callback) {
-        mRequest = request;
-        mAuthCallback = callback;
+    public interface OnTaskFinishedListener {
+        void onTaskSuccess(String body);
+        void onTaskFailed(MoAuthException ex);
+    }
+
+    public RequestTask(Request request, OnTaskFinishedListener listener) {
+        this.mRequest = request;
+        this.mListener = listener;
     }
 
     @SuppressWarnings("UnnecessaryLocalVariable")
@@ -46,14 +51,14 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
         if (response != null) {
             if (response.isSuccessful()) {
                 try {
-                    MoAuthTokenResult token = parseResponseData(response.body().string());
-                    mAuthCallback.onComplete(token, null);
+                    mListener.onTaskSuccess(response.body().string());
                     return;
-                } catch (JSONException | IOException e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
-            mAuthCallback.onComplete(null, parseError(response.code()));
+            mListener.onTaskFailed(parseError(response.code()));
+//            mAuthCallback.onComplete(null, parseError(response.code()));
         }
     }
 
@@ -80,19 +85,4 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
         return new MoAuthExceptionManager("Error: " + errCode, reason);
     }
 
-    /**
-     * Parse the response which represents the token
-     *
-     * @param data String containing the json object
-     * @return OAuthTokenResult
-     * @throws JSONException
-     */
-    private MoAuthTokenResult parseResponseData(String data) throws JSONException {
-        JSONObject jsonObject = new JSONObject(data);
-        String accessToken = jsonObject.getString("access_token");
-        String refreshToken = jsonObject.isNull("refresh_token") ? "" : jsonObject.getString("refresh_token");
-        int expiresIn = jsonObject.getInt("expires_in");
-
-        return new MoAuthTokenResult(accessToken, refreshToken, expiresIn);
-    }
 }

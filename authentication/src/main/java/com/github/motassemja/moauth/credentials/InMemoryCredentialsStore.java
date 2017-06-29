@@ -12,15 +12,15 @@ public class InMemoryCredentialsStore implements MoAuthCredentialsStore {
 
     @Override
     public void storeCredentials(MoAuthCredentials credentials, Context context) {
-        SecurePreferences.setValue(credentials.getAlias(), credentials.getRefreshToken(), context);
+        SecurePreferences.setValue(credentials.getClientID(), credentials.getClientSecret(), context);
     }
 
     @Override
-    public MoAuthCredentials loadCredentials(String alias, Context context) {
-        String rToken = SecurePreferences.getStringValue(alias, context, "");
-        assert rToken != null;
-        if (!rToken.isEmpty()) {
-            return new MoAuthCredentials(rToken, alias);
+    public MoAuthCredentials loadCredentials(String clientId, Context context) {
+        String clientSecret = SecurePreferences.getStringValue(clientId, context, "");
+        assert clientSecret != null;
+        if (!clientSecret.isEmpty()) {
+            return new MoAuthCredentials(clientId, clientSecret);
         }
         return null;
     }

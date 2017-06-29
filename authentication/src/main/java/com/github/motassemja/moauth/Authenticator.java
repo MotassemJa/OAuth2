@@ -3,6 +3,7 @@ package com.github.motassemja.moauth;
 import android.content.Context;
 
 import com.github.motassemja.moauth.credentials.MoAuthCredentials;
+import com.github.motassemja.moauth.credentials.MoAuthROPCCredentials;
 import com.github.motassemja.moauth.exceptions.MoAuthExceptionManager;
 import com.github.motassemja.moauth.exceptions.MoAuthExceptionReason;
 
@@ -29,26 +30,15 @@ public class Authenticator {
 
     public Authenticator(MoAuthConfig config, Context context, String tenantName) {
         this.mConfig = config;
-        mClient = new MoAuthClient(mConfig);
+        mClient = new MoAuthClient(mConfig, context);
         this.mContext = context;
         this.mTenantName = tenantName;
     }
 
-    public void authenticateWithCredentials(final AuthenticationCallback callback) {
-        mClient.requestOAuthToken(new MoAuthClient.MoAuthCallback() {
-            @Override
-            public void onComplete(MoAuthTokenResult tokenResult, Exception e) {
-                if (e == null) {
-                    callback.onAuthenticationCompleted(true, null);
-                } else {
-                    callback.onAuthenticationCompleted(false, e);
-                }
-            }
-        });
-    }
 
     public void authenticateWithUsername(final String username, final String password, final AuthenticationCallback callback) {
-        mClient.requestOAuthTokenWithUsername(username, password, new MoAuthClient.MoAuthCallback() {
+        MoAuthROPCCredentials credentials = new MoAuthROPCCredentials(mConfig.getClientID(), mConfig.getClientSecret(), username, password);
+        mClient.requestOAuthTokenWithUsername(credentials, new MoAuthClient.MoAuthCallback() {
             @Override
             public void onComplete(MoAuthTokenResult tokenResult, Exception e) {
                 if (e != null) {
@@ -56,15 +46,6 @@ public class Authenticator {
                     callback.onAuthenticationCompleted(false, e);
                 } else {
                     mTokenResult = tokenResult;
-                    MoAuthCredentials credentials = new MoAuthCredentials();
-                    credentials.setRefreshToken(tokenResult.getRefreshToken());
-                    credentials.setAlias(username);
-                    credentials.setPassword(password);
-                    credentials.setClientSecret(mConfig.getClientSecret());
-                    credentials.setClientID(mConfig.getClientID());
-
-                    mClient.getCredentialsStore().storeCredentials(credentials, mContext);
-                    callback.onAuthenticationCompleted(true, e);
                 }
             }
         });
@@ -87,19 +68,16 @@ public class Authenticator {
         MoAuthTokenResult validAccessToken = null;
         if (isAccessTokenValid()) {
             validAccessToken = mTokenResult;
-            if (!validAccessToken.getAccessToken().isEmpty()) {
+            if (!validAccessToken.getAccessToken().isEmpty()) { // Token is valid and still available, just return it.
                 callback.onAccessTokenReceived(validAccessToken.getAccessToken(), null);
             } else {
-                MoAuthCredentials credentials = mClient.getCredentialsStore().loadCredentials(mTenantName, mContext);
+                MoAuthCredentials credentials = mClient.getCredentialsStore().loadCredentials(mConfig.getClientID(), mContext);
                 if (credentials != null) {
-                    mClient.requestOAuthTokenWithRefreshToken(credentials.getRefreshToken(), new MoAuthClient.MoAuthCallback() {
+                    mClient.requestOAuthTokenWithCredentials(credentials, new MoAuthClient.MoAuthCallback() {
                         @Override
                         public void onComplete(MoAuthTokenResult tokenResult, Exception e) {
-                            if (e != null) {
-                                callback.onAccessTokenReceived(null, e);
-                            } else {
-                                callback.onAccessTokenReceived(tokenResult.getAccessToken(), null);
-                            }
+                            if (e != null) callback.onAccessTokenReceived(null, e);
+                            else callback.onAccessTokenReceived(tokenResult.getAccessToken(), null);
                         }
                     });
                 } else {
@@ -108,6 +86,8 @@ public class Authenticator {
                 }
             }
         }
+        callback.onAccessTokenReceived(null, new MoAuthExceptionManager("Access token invalid"
+                , MoAuthExceptionReason.REASON_NOT_AUTHENTICATED));
     }
 
     private boolean isAccessTokenValid() {
