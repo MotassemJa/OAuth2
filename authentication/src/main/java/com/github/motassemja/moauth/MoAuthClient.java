@@ -132,6 +132,7 @@ public class MoAuthClient {
 
                 @Override
                 public void onTaskFailed(MoAuthException ex) {
+                    ex.printStackTrace();
 
                 }
             }).execute();

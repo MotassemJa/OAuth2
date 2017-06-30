@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/MoAuth.iml" filepath="$PROJECT_DIR$/MoAuth.iml" />
       <module fileurl="file://$PROJECT_DIR$/MoAuth2.iml" filepath="$PROJECT_DIR$/MoAuth2.iml" />
       <module fileurl="file://$PROJECT_DIR$/authentication/authentication.iml" filepath="$PROJECT_DIR$/authentication/authentication.iml" />
+      <module fileurl="file://$PROJECT_DIR$/exampleapp/exampleapp.iml" filepath="$PROJECT_DIR$/exampleapp/exampleapp.iml" />
     </modules>
   </component>
 </project>

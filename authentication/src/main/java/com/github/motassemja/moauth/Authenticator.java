@@ -35,6 +35,21 @@ public class Authenticator {
         this.mTenantName = tenantName;
     }
 
+    public void authenticateWithCredentials(final AuthenticationCallback callback) {
+        mClient.requestOAuthTokenWithCredentials(new MoAuthCredentials(mConfig.getClientID(), mConfig.getClientSecret()), new MoAuthClient.MoAuthCallback() {
+            @Override
+            public void onComplete(MoAuthTokenResult tokenResult, Exception e) {
+                if (e != null) {
+                    e.printStackTrace();
+                    callback.onAuthenticationCompleted(false, e);
+                }
+                else {
+                    mTokenResult = tokenResult;
+                    callback.onAuthenticationCompleted(true, null);
+                }
+            }
+        });
+    }
 
     public void authenticateWithUsername(final String username, final String password, final AuthenticationCallback callback) {
         MoAuthROPCCredentials credentials = new MoAuthROPCCredentials(mConfig.getClientID(), mConfig.getClientSecret(), username, password);
@@ -46,6 +61,7 @@ public class Authenticator {
                     callback.onAuthenticationCompleted(false, e);
                 } else {
                     mTokenResult = tokenResult;
+                    callback.onAuthenticationCompleted(true, null);
                 }
             }
         });

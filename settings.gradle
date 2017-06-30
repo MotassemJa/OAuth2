@@ -1,1 +1,1 @@
-include ':authentication'
+include ':authentication', ':exampleapp'
