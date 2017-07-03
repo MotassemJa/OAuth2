@@ -17,7 +17,7 @@ import okhttp3.Response;
  * Created by moja on 12.06.2017.
  */
 
-public class RequestTask extends AsyncTask<Void, Void, String> {
+public class RequestTask extends AsyncTask<Void, Void, Void> {
     private Request mRequest;
     private OnTaskFinishedListener mListener;
 
@@ -34,33 +34,24 @@ public class RequestTask extends AsyncTask<Void, Void, String> {
 
     @SuppressWarnings("UnnecessaryLocalVariable")
     @Override
-    protected String doInBackground(Void... params) {
+    protected Void doInBackground(Void... params) {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).writeTimeout(15, TimeUnit.SECONDS)
                 .build();
         try {
             Response response = client.newCall(mRequest).execute();
             if (response != null) {
-                String s = response.body().string();
-                if (!response.isSuccessful()) {
-                    s = "Err " + response.code();
+                if (response.isSuccessful()) {
+                    mListener.onTaskSuccess(response.body().string());
+                } else {
+                    mListener.onTaskFailed(parseError(response.code()));
                 }
-                return s;
             }
 
         } catch (IOException e) {
             e.printStackTrace();
         }
         return null;
-    }
-
-    @Override
-    protected void onPostExecute(String response) {
-        super.onPostExecute(response);
-        if (response.contains("err"))
-            mListener.onTaskSuccess(response);
-        else
-            mListener.onTaskFailed(parseError(Integer.parseInt(response)));
     }
 
     /**

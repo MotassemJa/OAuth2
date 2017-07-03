@@ -75,7 +75,7 @@ public class MoAuthClient {
         formBuilder.add("grant_type", "password");
         formBuilder.add("username", credentials.getUsername());
         formBuilder.add("password", credentials.getPassword());
-        requestOAuthTokenWithBody(credentials.getClientID(), credentials.getClientSecret(), formBuilder, callback);
+        requestOAuthTokenWithBody(credentials.getClientID(), credentials.getClientSecret().replaceAll("[\\t\\n\\r]",""), formBuilder, callback);
     }
 
     /**
