@@ -20,9 +20,9 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             MoAuthConfig config = new MoAuthConfig(new ArrayList<String>()
-                    , new URI("http://brentertainment.com/oauth2/lockdin/token"), null, "demoapp", "demopass");
+                    , new URI("https://auth-tsi-dev-app.azurewebsites.de/authorization_server"), null, "cWFy_QFr2zI", "jCnLXo1B3yJ1M0wGnCBO7O/W9mZHo4JuUWHUiuxnZKg=");
             Authenticator authenticator = new Authenticator(config, this, "Test");
-            authenticator.authenticateWithUsername("demouser", "testpass", new Authenticator.AuthenticationCallback() {
+            authenticator.authenticateWithUsername("Motassem.Jalal-Aldeen@t-systems.com", "password", new Authenticator.AuthenticationCallback() {
                 @Override
                 public void onAuthenticationCompleted(boolean flag, Exception e) {
                     if (flag) Toast.makeText(MainActivity.this, "True", Toast.LENGTH_SHORT).show();
