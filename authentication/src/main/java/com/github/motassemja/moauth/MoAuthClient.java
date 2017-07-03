@@ -112,7 +112,8 @@ public class MoAuthClient {
             String authHeader = Credentials.basic(clientID, clientSecret);
             requestBuilder.addHeader("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
                     .addHeader("Accept", "application/json")
-                    .addHeader("Authorization", authHeader);
+                    .addHeader("Authorization", authHeader)
+                    .addHeader("tenant", "development");
 
             RequestBody requestBody = body.build();
             Request request = requestBuilder.url(oAuthConfig.getTokenUri().toURL())
