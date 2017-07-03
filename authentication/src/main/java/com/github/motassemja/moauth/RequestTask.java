@@ -17,7 +17,7 @@ import okhttp3.Response;
  * Created by moja on 12.06.2017.
  */
 
-public class RequestTask extends AsyncTask<Void, Void, Response> {
+public class RequestTask extends AsyncTask<Void, Void, String> {
     private Request mRequest;
     private OnTaskFinishedListener mListener;
 
@@ -34,13 +34,20 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
 
     @SuppressWarnings("UnnecessaryLocalVariable")
     @Override
-    protected Response doInBackground(Void... params) {
+    protected String doInBackground(Void... params) {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).writeTimeout(15, TimeUnit.SECONDS)
                 .build();
         try {
             Response response = client.newCall(mRequest).execute();
-            return response;
+            if (response != null) {
+                String s = response.body().string();
+                if (!response.isSuccessful()) {
+                    s = "Err " + response.code();
+                }
+                return s;
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -48,20 +55,12 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
     }
 
     @Override
-    protected void onPostExecute(Response response) {
+    protected void onPostExecute(String response) {
         super.onPostExecute(response);
-        if (response != null) {
-            if (response.isSuccessful()) {
-                try {
-                    mListener.onTaskSuccess(response.body().string());
-                    return;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            mListener.onTaskFailed(parseError(response.code()));
-//            mAuthCallback.onComplete(null, parseError(response.code()));
-        }
+        if (response.contains("err"))
+            mListener.onTaskSuccess(response);
+        else
+            mListener.onTaskFailed(parseError(Integer.parseInt(response)));
     }
 
     /**
