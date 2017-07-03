@@ -17,7 +17,7 @@ import okhttp3.Response;
  * Created by moja on 12.06.2017.
  */
 
-public class RequestTask extends AsyncTask<Void, Void, Void> {
+public class RequestTask extends AsyncTask<Void, Void, String> {
     private Request mRequest;
     private OnTaskFinishedListener mListener;
 
@@ -34,24 +34,40 @@ public class RequestTask extends AsyncTask<Void, Void, Void> {
 
     @SuppressWarnings("UnnecessaryLocalVariable")
     @Override
-    protected Void doInBackground(Void... params) {
+    protected String doInBackground(Void... params) {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).writeTimeout(15, TimeUnit.SECONDS)
                 .build();
         try {
             Response response = client.newCall(mRequest).execute();
             if (response != null) {
+                String res = "";
                 if (response.isSuccessful()) {
-                    mListener.onTaskSuccess(response.body().string());
+                    res = response.body().string();
                 } else {
-                    mListener.onTaskFailed(parseError(response.code()));
+                    res = "Err" + response.code();
                 }
+                return res;
             }
 
         } catch (IOException e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    @Override
+    protected void onPostExecute(String s) {
+        super.onPostExecute(s);
+        if ((s != null && !s.isEmpty()) && !s.startsWith("Err ")) {
+            mListener.onTaskSuccess(s);
+            return;
+        }
+        int errCode = 0;
+        if (s != null) {
+            errCode = Integer.parseInt(s.split(" ")[1]);
+        }
+        mListener.onTaskFailed(parseError(errCode));
     }
 
     /**
