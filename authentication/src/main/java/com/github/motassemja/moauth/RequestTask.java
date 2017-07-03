@@ -2,14 +2,13 @@ package com.github.motassemja.moauth;
 
 import android.os.AsyncTask;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
-
 import com.github.motassemja.moauth.exceptions.MoAuthException;
 import com.github.motassemja.moauth.exceptions.MoAuthExceptionManager;
 import com.github.motassemja.moauth.exceptions.MoAuthExceptionReason;
+
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -24,6 +23,7 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
 
     public interface OnTaskFinishedListener {
         void onTaskSuccess(String body);
+
         void onTaskFailed(MoAuthException ex);
     }
 
@@ -35,7 +35,9 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
     @SuppressWarnings("UnnecessaryLocalVariable")
     @Override
     protected Response doInBackground(Void... params) {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).writeTimeout(15, TimeUnit.SECONDS)
+                .build();
         try {
             Response response = client.newCall(mRequest).execute();
             return response;
@@ -76,7 +78,7 @@ public class RequestTask extends AsyncTask<Void, Void, Response> {
                 reason = MoAuthExceptionReason.REASON_INVALID_REQUEST;
                 break;
             case 401:
-                reason = MoAuthExceptionReason.REASON_INVALID_GRANT;
+                reason = MoAuthExceptionReason.REASON_NOT_AUTHENTICATED;
                 break;
             default:
                 reason = MoAuthExceptionReason.REASON_SERVER_ERROR;
