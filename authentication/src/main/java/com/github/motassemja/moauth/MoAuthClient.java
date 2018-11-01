@@ -1,188 +1,121 @@
+/*
+ * Copyright (c) MotassemJa@GitHub
+ * All rights reserved.
+ *
+ * Name: OAuthClient
+ * Author: Motassem Jalal
+ * Date: 01.11.2018
+ */
 package com.github.motassemja.moauth;
 
-import android.content.Context;
+
+import android.os.NetworkOnMainThreadException;
+
+import com.github.motassemja.moauth.api.AuthenticationAPI;
+import com.github.motassemja.moauth.credentials.MoAuthCredentials;
+import com.github.motassemja.moauth.interceptors.AuthorizationInterceptor;
+import com.github.motassemja.moauth.interceptors.ContentTypeInterceptor;
+import com.github.motassemja.moauth.model.MoAuthTokenResult;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.IOException;
-import java.util.List;
 
-import com.github.motassemja.moauth.credentials.InMemoryCredentialsStore;
-import com.github.motassemja.moauth.credentials.MoAuthCredentials;
-import com.github.motassemja.moauth.credentials.MoAuthCredentialsStore;
-import com.github.motassemja.moauth.credentials.MoAuthROPCCredentials;
-import com.github.motassemja.moauth.credentials.MoAuthRefreshCredentials;
-import com.github.motassemja.moauth.exceptions.MoAuthException;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import io.reactivex.Observable;
+import io.reactivex.schedulers.Schedulers;
 import okhttp3.Credentials;
-import okhttp3.FormBody;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-
-/**
- * Created by moja on 12.06.2017.
- */
+import okhttp3.OkHttpClient;
+import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MoAuthClient {
 
+    /**
+     * Authentication Server URL
+     */
+    private String baseUrl;
 
-    public interface MoAuthCallback {
-        void onComplete(MoAuthTokenResult tokenResult, Exception e);
-    }
+    /**
+     * Singleton instance
+     */
+    private static MoAuthClient INSTANCE = null;
 
-    private MoAuthConfig oAuthConfig;
+    /**
+     * Service
+     */
+    private AuthenticationAPI authApi;
 
-    private MoAuthCredentialsStore mCredentialsStore;
-    private Context mContext;
+    /**
+     * To be authenticated
+     */
+    private MoAuthCredentials clientCredentials;
 
-    public MoAuthClient(MoAuthConfig oAuthConfig, Context context) {
-        this.oAuthConfig = oAuthConfig;
-        this.mContext = context;
-        if (oAuthConfig.getCredentialsStore() != null) {
-            mCredentialsStore = oAuthConfig.getCredentialsStore();
-        } else {
-            mCredentialsStore = new InMemoryCredentialsStore();
-        }
-    }
+    /**
+     * Private Constructor
+     *
+     * @param url         - Base URL
+     * @param credentials - ID & Secret
+     */
+    private MoAuthClient(String url, MoAuthCredentials credentials) {
+        // Avoid Bad URL Exception
+        if (!url.endsWith("/")) url += "/";
+        this.baseUrl = url;
 
-    public MoAuthCredentialsStore getCredentialsStore() {
-        return mCredentialsStore;
-    }
+        this.clientCredentials = credentials;
 
-    public void setCredentialsStore(MoAuthCredentialsStore mCredentialsStore) {
-        this.mCredentialsStore = mCredentialsStore;
-    }
+        final Gson gson = new GsonBuilder().create();
 
-    public void requestOAuthTokenWithCredentials(MoAuthCredentials credentials, MoAuthCallback callback) {
-        if (credentials instanceof MoAuthRefreshCredentials) {
-            requestOAuthTokenWithRefreshToken((MoAuthRefreshCredentials) credentials, callback);
-        } else if (credentials instanceof MoAuthROPCCredentials) {
-            requestOAuthTokenWithUsername((MoAuthROPCCredentials) credentials, callback);
-        } else {
-            requestOAuthToken(credentials, callback);
-        }
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .addInterceptor(new ContentTypeInterceptor("application/x-www-form-urlencoded"))
+                .addInterceptor(new AuthorizationInterceptor(
+                        Credentials.basic(clientCredentials.getClientID(), clientCredentials.getClientSecret()))
+                )
+                .build();
+
+        final Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(this.baseUrl)
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .client(okHttpClient)
+                .build();
+
+        authApi = retrofit.create(AuthenticationAPI.class);
     }
 
     /**
-     * Request OAuthToken with grant_type = password
+     * Singleton
      *
-     * @param credentials
-     * @param callback
+     * @param url         - Token URL
+     * @param credentials - ID & Secret
+     * @return - Instance of Client
      */
-    public void requestOAuthTokenWithUsername(MoAuthROPCCredentials credentials, MoAuthCallback callback) {
-        FormBody.Builder formBuilder = new FormBody.Builder();
-        formBuilder.add("grant_type", "password");
-        formBuilder.add("username", credentials.getUsername());
-        formBuilder.add("password", credentials.getPassword());
-        requestOAuthTokenWithBody(credentials.getClientID(), credentials.getClientSecret().replaceAll("[\\t\\n\\r]",""), formBuilder, callback);
-    }
-
-    /**
-     * Request OAuthToken with gran_type = client_credentials
-     *
-     * @param credentials
-     * @param callback
-     */
-    public void requestOAuthToken(MoAuthCredentials credentials, MoAuthCallback callback) {
-        FormBody.Builder formBuilder = new FormBody.Builder();
-        formBuilder.add("grant_type", "client_credentials");
-        requestOAuthTokenWithBody(credentials.getClientID(), credentials.getClientSecret(), formBuilder, callback);
-    }
-
-    /**
-     * Request OAuthToken with grant_type = refresh_token
-     *
-     * @param credentials
-     * @param callback
-     */
-    public void requestOAuthTokenWithRefreshToken(MoAuthRefreshCredentials credentials, MoAuthCallback callback) {
-        FormBody.Builder formBuilder = new FormBody.Builder();
-        formBuilder.add("grant_type", "refresh_token");
-        formBuilder.add("refresh_token", credentials.getRefreshToken());
-        requestOAuthTokenWithBody(credentials.getClientID(), credentials.getClientSecret(), formBuilder, callback);
-    }
-
-    private void requestOAuthTokenWithBody(final String clientID, final String clientSecret, FormBody.Builder body, final MoAuthCallback callback) {
-
-        try {
-            parseScopes(body);
-
-            Request.Builder requestBuilder = new Request.Builder();
-            String authHeader = Credentials.basic(clientID, clientSecret);
-            requestBuilder.addHeader("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
-                    .addHeader("Accept", "application/json")
-                    .addHeader("Authorization", authHeader)
-                    .addHeader("tenant", "development");
-
-            RequestBody requestBody = body.build();
-            Request request = requestBuilder.url(oAuthConfig.getTokenUri().toURL())
-                    .post(requestBody)
-                    .build();
-
-            new RequestTask(request, new RequestTask.OnTaskFinishedListener() {
-                @Override
-                public void onTaskSuccess(String body) {
-                    try {
-                        MoAuthTokenResult token = parseResponseData(clientID, clientSecret, body);
-                        if (token != null) callback.onComplete(token, null);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                @Override
-                public void onTaskFailed(MoAuthException ex) {
-                    ex.printStackTrace();
-
-                }
-            }).execute();
-
-        } catch (IOException e) {
-            e.printStackTrace();
+    public static MoAuthClient getInstance(String url, MoAuthCredentials credentials) {
+        if (INSTANCE == null || !INSTANCE.baseUrl.equals(url) || !INSTANCE.clientCredentials.equals(credentials)) {
+            INSTANCE = new MoAuthClient(url, credentials);
         }
-    }
-
-    private void parseScopes(FormBody.Builder body) {
-        List<String> scopes = oAuthConfig.getScopes();
-        if (!scopes.isEmpty()) {
-            String scopeBody = "";
-            for (String s : scopes) {
-                scopeBody += s + ":";
-            }
-            body.add("scope", scopeBody);
-        }
+        return INSTANCE;
     }
 
     /**
-     * Parse the response which represents the token
+     * Authenticate with Client Credentials grant type
+     * Will run on a separate thread from Thread Pool
      *
-     *
-     * @param clientID
-     * @param clientSecret
-     *@param data String containing the json object  @return OAuthTokenResult
-     * @throws JSONException
+     * @return Observable containing {@link MoAuthTokenResult}
      */
-    private MoAuthTokenResult parseResponseData(String clientID, String clientSecret, String data) throws JSONException {
-        JSONObject jsonObject = new JSONObject(data);
-        String accessToken = jsonObject.getString("access_token");
-        String refreshToken = jsonObject.isNull("refresh_token") ? "" : jsonObject.getString("refresh_token");
-        int expiresIn = jsonObject.getInt("expires_in");
-        if (!refreshToken.isEmpty()) {
-            mCredentialsStore.storeCredentials(new MoAuthRefreshCredentials(clientID, clientSecret, refreshToken), mContext);
-        } else {
-            mCredentialsStore.storeCredentials(new MoAuthCredentials(clientID, clientSecret), mContext);
-        }
-
-        return new MoAuthTokenResult(accessToken, refreshToken, expiresIn);
+    public Observable<MoAuthTokenResult> authenticateWithClientCredentials() {
+        return authApi.authenticate("client_credentials")
+                .subscribeOn(Schedulers.io());
     }
 
     /**
-     * Prepare the authorization header to add it to request body
+     * Fetch an access token
      *
-     * @return String representing the authorization header value
+     * @return Response with Access Token
+     * @throws IOException
+     * @throws NetworkOnMainThreadException This method will cause app to crash in case it was used in main thread.
      */
-    private String createAuthorizationHeader() {
-        return okhttp3.Credentials.basic(oAuthConfig.getClientID(), oAuthConfig.getClientSecret());
+    public retrofit2.Response<MoAuthTokenResult> authenticateOldSchool() throws IOException, NetworkOnMainThreadException {
+        return authApi.authenticateOldSchool("client_credentials").execute();
     }
 }

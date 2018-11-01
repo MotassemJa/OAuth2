@@ -7,7 +7,7 @@ import android.content.Context;
  */
 
 public interface MoAuthCredentialsStore {
-    void storeCredentials(MoAuthCredentials credentials, Context context);
+    void storeCredentials(MoAuthCredentials credentials);
 
-    MoAuthCredentials loadCredentials(String alias, Context context);
+    MoAuthCredentials loadCredentials(String alias);
 }

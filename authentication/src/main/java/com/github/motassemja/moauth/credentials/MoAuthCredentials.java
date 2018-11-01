@@ -1,5 +1,7 @@
 package com.github.motassemja.moauth.credentials;
 
+import androidx.annotation.Nullable;
+
 /**
  * Created by moja on 12.06.2017.
  */
@@ -34,4 +36,10 @@ public class MoAuthCredentials {
         this.clientSecret = clientSecret;
     }
 
+    @Override
+    public boolean equals(@Nullable Object obj) {
+        return obj instanceof MoAuthCredentials
+                && ((MoAuthCredentials) obj).clientID.equals(this.clientID)
+                && ((MoAuthCredentials) obj).clientSecret.equals(this.clientSecret);
+    }
 }

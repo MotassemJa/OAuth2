@@ -11,13 +11,13 @@ import de.adorsys.android.securestoragelibrary.SecurePreferences;
 public class InMemoryCredentialsStore implements MoAuthCredentialsStore {
 
     @Override
-    public void storeCredentials(MoAuthCredentials credentials, Context context) {
-        SecurePreferences.setValue(credentials.getClientID(), credentials.getClientSecret(), context);
+    public void storeCredentials(MoAuthCredentials credentials) {
+        SecurePreferences.setValue(credentials.getClientID(), credentials.getClientSecret());
     }
 
     @Override
-    public MoAuthCredentials loadCredentials(String clientId, Context context) {
-        String clientSecret = SecurePreferences.getStringValue(clientId, context, "");
+    public MoAuthCredentials loadCredentials(String clientId) {
+        String clientSecret = SecurePreferences.getStringValue(clientId, "");
         assert clientSecret != null;
         if (!clientSecret.isEmpty()) {
             return new MoAuthCredentials(clientId, clientSecret);
